@@ -25,8 +25,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Prepare Android SDK
-        uses: android-actions/setup-android@v3
+      -       - name: Prepare Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER=$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
 
       - name: Prepare HTML application
         run: |
