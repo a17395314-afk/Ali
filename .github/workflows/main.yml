@@ -6,12 +6,15 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: Download Project
         uses: actions/checkout@v4
 
       - name: Install Node.js
@@ -25,31 +28,32 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      -       - name: Prepare Android SDK
+      - name: Prepare Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Packages
         run: |
-          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          SDKMANAGER=$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | head -n 1)
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager not found"
-            exit 1
-          fi
-          yes | "$SDKMANAGER" --licenses || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-
-      - name: Prepare HTML application
+      - name: Prepare HTML Application
         run: |
           mkdir -p www
-          find . -maxdepth 1 -mindepth 1 ! -name .git ! -name .github ! -name www -exec cp -R {} www/ \;
-          HTML_FILE=$(find www -maxdepth 1 -type f -iname '*.html' | head -n 1)
+
+          HTML_FILE=$(find . -maxdepth 1 -type f -iname '*.html' | head -n 1)
+
           if [ -z "$HTML_FILE" ]; then
-            echo "No HTML file found"
+            echo "ERROR: No HTML file found in repository root."
             exit 1
           fi
+
           cp "$HTML_FILE" www/index.html
+
           npm init -y
+
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+
           printf '{"appId":"com.alam.aladdad","appName":"Alam Aladdad","webDir":"www"}' > capacitor.config.json
+
           npx cap add android
 
       - name: Build APK
@@ -63,3 +67,4 @@ jobs:
         with:
           name: Alam-Aladdad-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
