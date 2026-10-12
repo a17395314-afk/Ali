@@ -29,35 +29,66 @@ jobs:
           java-version: 17
 
       - name: Prepare Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK Packages
+        shell: bash
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          set -e
+
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null | head -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager was not found."
+            exit 1
+          fi
+
+          echo "Using sdkmanager: $SDKMANAGER"
+
+          yes | "$SDKMANAGER" \
+            --sdk_root="$SDK_ROOT" --licenses || true
+
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Prepare HTML Application
+        shell: bash
         run: |
+          set -e
+
           mkdir -p www
 
-          HTML_FILE=$(find . -maxdepth 1 -type f -iname '*.html' | head -n 1)
+          HTML_FILE=$(find . -maxdepth 1 -type f \
+            -iname '*.html' | head -n 1)
 
           if [ -z "$HTML_FILE" ]; then
             echo "ERROR: No HTML file found in repository root."
             exit 1
           fi
 
+          echo "Using HTML file: $HTML_FILE"
           cp "$HTML_FILE" www/index.html
 
           npm init -y
 
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install @capacitor/core@6 \
+            @capacitor/cli@6 \
+            @capacitor/android@6
 
-          printf '{"appId":"com.alam.aladdad","appName":"Alam Aladdad","webDir":"www"}' > capacitor.config.json
+          printf '%s\n' \
+            '{"appId":"com.alam.aladdad","appName":"عالم العدد","webDir":"www"}' \
+            > capacitor.config.json
 
           npx cap add android
 
       - name: Build APK
+        shell: bash
         run: |
+          set -e
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
